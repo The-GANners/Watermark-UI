@@ -1,0 +1,12 @@
+*.indd
+*.jpg
+*.png
+.idea/*
+*.psd
+*.gif
+*.pyc
+env/*
+build
+include
+install_prep.bat
+requirements-env
