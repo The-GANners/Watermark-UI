@@ -1,31 +1,30 @@
-import tkinter as tk
+from tkinter import *
+
 from FreeMark.UI.ouput_selector import OutputSelector
 from FreeMark.UI.watermark_selector import WatermarkSelector
 from FreeMark.UI.watermark_options import WatermarkOptions
-from FreeMark.UI.theme_manager import ThemeManager
 
-class OptionsPane(tk.Frame):
+
+class OptionsPane(Frame):
     """
     Frame for holding all the options elements, is also used as an interface
     to supply the worker with settings and services
     """
-    def __init__(self, master=None, theme=None):
+    def __init__(self, master=None):
         super().__init__(master)
-        self.theme = theme or ThemeManager()
-        self.theme.style_frame(self)
-        self.output_selector = OutputSelector(self, theme=self.theme)
-        self.watermark_selector = WatermarkSelector(self, theme=self.theme)
-        self.watermark_options = WatermarkOptions(self, theme=self.theme)
+
+        self.output_selector = OutputSelector(self)
+        self.watermark_selector = WatermarkSelector(self)
+        self.watermark_options = WatermarkOptions(self)
         self.create_widgets()
 
     def create_widgets(self):
-        pady = 8
-        self.label = tk.Label(self, text="Settings")
-        self.theme.style_label(self.label)
-        self.label.pack(anchor=tk.N, pady=(pady, 0))
-        self.watermark_selector.pack(fill=tk.X, pady=pady, anchor=tk.N)
-        self.watermark_options.pack(fill=tk.X, pady=pady, anchor=tk.N)
-        self.output_selector.pack(fill=tk.X, anchor=tk.N)
+        """Create the graphical element"""
+        pady = 5
+        Label(self, text="Settings", font=14).pack(anchor=N)
+        self.watermark_selector.pack(fill=X, pady=pady, anchor=N)
+        self.watermark_options.pack(fill=X, pady=pady, anchor=N)
+        self.output_selector.pack(fill=X, anchor=N)
 
     def get_watermark_path(self):
         """

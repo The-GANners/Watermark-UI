@@ -1,51 +1,59 @@
-import tkinter as tk
+from tkinter import *
 from tkinter.ttk import Progressbar
 from tkinter import messagebox
 import threading
 import queue
 import os
+
 from ..tools.errors import BadOptionError
 from FreeMark.tools.watermarker import WaterMarker
 from FreeMark.UI.remaining_time import RemainingTime
-from FreeMark.UI.theme_manager import ThemeManager
 
-class Worker(tk.Frame):
+
+class Worker(Frame):
     """
     Worker gui elements, does all the actual work to the images with the
     watermarker class and contains progressbar and startbutton
     """
-    def __init__(self, file_selector, options_pane, master=None, theme=None):
+    def __init__(self, file_selector, options_pane, master=None):
         super().__init__(master)
-        self.theme = theme or ThemeManager()
+
         self.running = False
+
         self.image_que = queue.Queue()
+
         self.file_selector = file_selector
         self.option_pane = options_pane
         self.watermarker = WaterMarker
-        self.progress_var = tk.IntVar()
-        self.file_count = tk.IntVar()
-        self.counter_frame = tk.Frame(self, bg=self.theme.current['bg'])
-        self.progress_bar = Progressbar(self, orient="horizontal", mode="determinate", length=600)
-        self.time_tracker = RemainingTime(self.counter_frame, theme=self.theme)
-        self.button_frame = tk.Frame(self, bg=self.theme.current['bg'])
-        self.start_button = tk.Button(self.button_frame, text="Start", command=self.apply_watermarks, width=10, bg=self.theme.current['button_bg'], fg=self.theme.current['button_fg'], font=('Segoe UI', 11, 'bold'), relief=tk.FLAT, bd=0, highlightthickness=0)
-        self.stop_button = tk.Button(self.button_frame, text="Stop", command=self.stop_work, width=10, bg=self.theme.current['button_bg'], fg=self.theme.current['button_fg'], font=('Segoe UI', 11, 'bold'), relief=tk.FLAT, bd=0, highlightthickness=0)
-        self.theme.style_frame(self)
+
+        self.progress_var = IntVar()
+        self.file_count = IntVar()
+        self.counter_frame = Frame(self)
+        self.progress_bar = Progressbar(self, orient="horizontal",
+                                        mode="determinate", length=600)
+        self.time_tracker = RemainingTime(self.counter_frame)
+
+        self.button_frame = Frame(self)
+        self.start_button = Button(self.button_frame, text="Start",
+                                   command=self.apply_watermarks, width=10)
+        self.stop_button = Button(self.button_frame, text="Stop",
+                                  command=self.stop_work, width=10)
+
         self.create_widgets()
 
     def create_widgets(self):
+        """Create GUI"""
         self.counter_frame.pack()
-        self.time_tracker.pack(side=tk.LEFT, padx=(0, 10))
-        progress_label = tk.Label(self.counter_frame, textvariable=self.progress_var, bg=self.theme.current['bg'], fg=self.theme.current['fg'], font=('Segoe UI', 11))
-        slash_label = tk.Label(self.counter_frame, text="/", bg=self.theme.current['bg'], fg=self.theme.current['fg'], font=('Segoe UI', 11))
-        count_label = tk.Label(self.counter_frame, textvariable=self.file_count, bg=self.theme.current['bg'], fg=self.theme.current['fg'], font=('Segoe UI', 11))
-        progress_label.pack(side=tk.LEFT)
-        slash_label.pack(side=tk.LEFT)
-        count_label.pack(side=tk.LEFT)
+        self.time_tracker.pack(side=LEFT, padx=(0, 10))
+        Label(self.counter_frame, textvariable=self.progress_var).pack(side=LEFT)
+        Label(self.counter_frame, text="/").pack(side=LEFT)
+        Label(self.counter_frame, textvariable=self.file_count).pack(side=LEFT)
+
         self.progress_bar.pack()
-        self.stop_button.config(state=tk.DISABLED)
-        self.start_button.pack(side=tk.LEFT, padx=15)
-        self.stop_button.pack(side=tk.LEFT)
+
+        self.stop_button.config(state=DISABLED)
+        self.start_button.pack(side=LEFT, padx=15)
+        self.stop_button.pack(side=LEFT)
         self.button_frame.pack(pady=10)
 
     def fill_que(self):
@@ -98,8 +106,8 @@ class Worker(tk.Frame):
             self.handle_error(e)
             return
 
-        self.stop_button.config(state=tk.NORMAL)
-        self.start_button.config(state=tk.DISABLED)
+        self.stop_button.config(state=NORMAL)
+        self.start_button.config(state=DISABLED)
         self.fill_que()
         self.start_work()
 

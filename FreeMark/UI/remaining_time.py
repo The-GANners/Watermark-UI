@@ -1,22 +1,26 @@
-import tkinter as tk
+from tkinter import *
 import time
 import threading
-from FreeMark.tools.pacer import Pacer
-from FreeMark.UI.theme_manager import ThemeManager
 
-class RemainingTime(tk.Frame):
-    def __init__(self, master=None, theme=None):
+from FreeMark.tools.pacer import Pacer
+
+
+class RemainingTime(Frame):
+    def __init__(self, master=None):
+        """
+        GUI element displaying remaining time for a process,
+        resembles tkinter's progress bar
+        :param master: Parent frame
+        """
         super().__init__(master)
-        self.theme = theme or ThemeManager()
-        self.theme.style_frame(self)
-        self.remaining_time = tk.IntVar()
-        self.description = tk.Label(self, text="Time remaining:")
-        self.time_label = tk.Label(self, textvariable=self.remaining_time)
-        self.unit_label = tk.Label(self, text="s")
-        self.theme.style_label(self.description)
-        self.theme.style_label(self.time_label)
-        self.theme.style_label(self.unit_label)
+
+        # Required GUI elements
+        self.remaining_time = IntVar()
+        self.description = Label(self, text="Time remaining:")
+        self.time_label = Label(self, textvariable=self.remaining_time)
+        self.unit_label = Label(self, text="s")
         self.show()
+
         self.pacer = Pacer()
 
     def set_max(self, _max):
@@ -72,6 +76,9 @@ class RemainingTime(tk.Frame):
             child.grid_forget()
 
     def show(self):
+        """
+        Show GUI elements
+        """
         self.description.grid(column=0, row=0)
         self.time_label.grid(column=1, row=0)
         self.unit_label.grid(column=2, row=0)
