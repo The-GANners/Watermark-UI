@@ -15,8 +15,16 @@ class Worker(Frame):
     Worker gui elements, does all the actual work to the images with the
     watermarker class and contains progressbar and startbutton
     """
-    def __init__(self, file_selector, options_pane, master=None):
-        super().__init__(master)
+    def set_dark_ttk_style(self):
+        from tkinter import ttk
+        style = ttk.Style()
+        style.theme_use('clam')
+        style.configure('TProgressbar', background='#6272a4', troughcolor='#23242a', 
+                       bordercolor='#44475a', lightcolor='#44475a', darkcolor='#44475a')
+    
+    def __init__(self, file_selector, options_pane, master=None, **kwargs):
+        super().__init__(master, **kwargs)
+        self.set_dark_ttk_style()
 
         self.running = False
 
@@ -28,16 +36,16 @@ class Worker(Frame):
 
         self.progress_var = IntVar()
         self.file_count = IntVar()
-        self.counter_frame = Frame(self)
+        self.counter_frame = Frame(self, bg='#2b2d35')
         self.progress_bar = Progressbar(self, orient="horizontal",
-                                        mode="determinate", length=600)
+                    mode="determinate", length=600)
         self.time_tracker = RemainingTime(self.counter_frame)
 
-        self.button_frame = Frame(self)
+        self.button_frame = Frame(self, bg='#2b2d35')
         self.start_button = Button(self.button_frame, text="Start",
-                                   command=self.apply_watermarks, width=10)
+                   command=self.apply_watermarks, width=10, bg='#44475a', fg='white', activebackground='#6272a4', activeforeground='white')
         self.stop_button = Button(self.button_frame, text="Stop",
-                                  command=self.stop_work, width=10)
+                  command=self.stop_work, width=10, bg='#44475a', fg='white', activebackground='#6272a4', activeforeground='white')
 
         self.create_widgets()
 
@@ -45,9 +53,9 @@ class Worker(Frame):
         """Create GUI"""
         self.counter_frame.pack()
         self.time_tracker.pack(side=LEFT, padx=(0, 10))
-        Label(self.counter_frame, textvariable=self.progress_var).pack(side=LEFT)
-        Label(self.counter_frame, text="/").pack(side=LEFT)
-        Label(self.counter_frame, textvariable=self.file_count).pack(side=LEFT)
+        Label(self.counter_frame, textvariable=self.progress_var, bg='#2b2d35', fg='white').pack(side=LEFT)
+        Label(self.counter_frame, text="/", bg='#2b2d35', fg='white').pack(side=LEFT)
+        Label(self.counter_frame, textvariable=self.file_count, bg='#2b2d35', fg='white').pack(side=LEFT)
 
         self.progress_bar.pack()
 

@@ -13,12 +13,13 @@ class RemainingTime(Frame):
         :param master: Parent frame
         """
         super().__init__(master)
+        self.configure(bg='#2b2d35')
 
         # Required GUI elements
         self.remaining_time = IntVar()
-        self.description = Label(self, text="Time remaining:")
-        self.time_label = Label(self, textvariable=self.remaining_time)
-        self.unit_label = Label(self, text="s")
+        self.description = Label(self, text="Time remaining:", bg='#2b2d35', fg='white')
+        self.time_label = Label(self, textvariable=self.remaining_time, bg='#2b2d35', fg='white')
+        self.unit_label = Label(self, text="s", bg='#2b2d35', fg='white')
         self.show()
 
         self.pacer = Pacer()

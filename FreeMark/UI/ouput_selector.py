@@ -12,11 +12,20 @@ SUFFIX = 2
 
 
 class OutputSelector(Frame):
+    def set_dark_ttk_style(self):
+        from tkinter import ttk
+        style = ttk.Style()
+        style.theme_use('clam')
+        style.configure('TEntry', fieldbackground='#23242a', foreground='white', bordercolor='#44475a', lightcolor='#44475a', darkcolor='#44475a')
+        style.configure('TMenubutton', background='#44475a', foreground='white', bordercolor='#44475a', lightcolor='#44475a', darkcolor='#44475a')
+        style.map('TEntry', focuscolor=[('!focus', '#44475a')])
+        style.map('TMenubutton', focuscolor=[('!focus', '#44475a')])
     """
     Class for selecting output destination and generating paths
     """
     def __init__(self, master=None):
         super().__init__(master)
+        self.configure(bg='#2b2d35')
 
         self.fix = StringVar()
         self.fix_position = IntVar()
@@ -25,38 +34,34 @@ class OutputSelector(Frame):
 
         self.validate_pattern = re.compile(r'[<|>*:?"/\\]')
 
-        self.entry_frame = Frame(self)
-        self.fix_frame = Frame(self)
-        self.radio_frame = Frame(self.fix_frame)
+        self.entry_frame = Frame(self, bg='#2b2d35')
+        self.fix_frame = Frame(self, bg='#2b2d35')
+        self.radio_frame = Frame(self.fix_frame, bg='#2b2d35')
         self.create_widgets()
 
     def create_widgets(self):
-        """
-        Create and pack the TK widgets
-        """
-        Label(self, text="Output options", font=14).pack(anchor=W)
+        self.set_dark_ttk_style()
+        Label(self, text="Output options", font=14, bg='#2b2d35', fg='white').pack(anchor=W)
 
-        Entry(self.entry_frame, width=50,
-              textvariable=self.output_dir).pack(side=LEFT)
+        from tkinter import ttk
+        ttk.Entry(self.entry_frame, width=50, textvariable=self.output_dir, style='TEntry').pack(side=LEFT)
         Button(self.entry_frame, text="Choose folder",
-               command=self.choose_dir).pack(side=LEFT, padx=10)
+               command=self.choose_dir, bg='#44475a', fg='white', activebackground='#6272a4', activeforeground='white').pack(side=LEFT, padx=10)
         self.entry_frame.pack(fill=X, pady=5)
 
-        Label(self, text="Rename files").pack(anchor=W)
+        Label(self, text="Rename files", bg='#2b2d35', fg='white').pack(anchor=W)
 
-        Label(self.fix_frame, text="Fix: ").pack(side=LEFT)
+        Label(self.fix_frame, text="Fix: ", bg='#2b2d35', fg='white').pack(side=LEFT)
 
         validate = (self.register(self.validate_fix), '%P')
-        Entry(self.fix_frame, width=30, validate="key", validatecommand=validate,
-              textvariable=self.fix).pack(side=LEFT, padx=5)
-        # Me? I know who I am
-        # I'm a frame playing a frame, disguised as another frame!
+        ttk.Entry(self.fix_frame, width=30, validate="key", validatecommand=validate,
+              textvariable=self.fix, style='TEntry').pack(side=LEFT, padx=5)
         Radiobutton(self.radio_frame, text="Postfix",
-                    variable=self.fix_position, value=SUFFIX).pack(side=RIGHT)
+                    variable=self.fix_position, value=SUFFIX, bg='#2b2d35', fg='white', selectcolor='#44475a', activebackground='#2b2d35', activeforeground='white').pack(side=RIGHT)
         Radiobutton(self.radio_frame, text="Prefix",
-                    variable=self.fix_position, value=PRE).pack(side=RIGHT)
+                    variable=self.fix_position, value=PRE, bg='#2b2d35', fg='white', selectcolor='#44475a', activebackground='#2b2d35', activeforeground='white').pack(side=RIGHT)
         Radiobutton(self.radio_frame, text="None", variable=self.fix_position,
-                    value=NONE).pack(side=RIGHT)
+                    value=NONE, bg='#2b2d35', fg='white', selectcolor='#44475a', activebackground='#2b2d35', activeforeground='white').pack(side=RIGHT)
         self.radio_frame.pack(anchor=CENTER)
         self.fix_frame.pack(fill=X)
 

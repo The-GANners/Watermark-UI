@@ -10,8 +10,9 @@ class OptionsPane(Frame):
     Frame for holding all the options elements, is also used as an interface
     to supply the worker with settings and services
     """
-    def __init__(self, master=None):
-        super().__init__(master)
+    def __init__(self, master=None, **kwargs):
+        super().__init__(master, **kwargs)
+        self.configure(bg='#2b2d35')
 
         self.output_selector = OutputSelector(self)
         self.watermark_selector = WatermarkSelector(self)
@@ -21,7 +22,7 @@ class OptionsPane(Frame):
     def create_widgets(self):
         """Create the graphical element"""
         pady = 5
-        Label(self, text="Settings", font=14).pack(anchor=N)
+        Label(self, text="Settings", font=14, bg='#2b2d35', fg='white').pack(anchor=N)
         self.watermark_selector.pack(fill=X, pady=pady, anchor=N)
         self.watermark_options.pack(fill=X, pady=pady, anchor=N)
         self.output_selector.pack(fill=X, anchor=N)

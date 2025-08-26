@@ -9,6 +9,7 @@ def main():
     root = Tk()
     root.title('FreeMark')
     root.iconbitmap('logo.ico')
+    root.configure(bg='#2b2d35')
 
     watermark = FreeMarkApp(master=root)
     watermark.mainloop()

@@ -12,24 +12,21 @@ class FreeMarkApp(Frame):
     the smaller pieces
     """
     def __init__(self, master=None):
-        Frame.__init__(self, master)
+        Frame.__init__(self, master, bg='#2b2d35')
         self.master = master
-
+        self.master.configure(bg='#2b2d35')
         self.create_widgets()
 
     def create_widgets(self):
         """Create the GUI elements"""
-        # Label(self.master, text='FreeMark', font=16).pack(pady=pad_y)
-
-        # Create listbox for files
-        options_frame = Frame(self.master)
-        file_selector = FileSelector(options_frame)
-        options_pane = OptionsPane(options_frame)
+        options_frame = Frame(self.master, bg='#2b2d35')
+        file_selector = FileSelector(options_frame, bg='#2b2d35')
+        options_pane = OptionsPane(options_frame, bg='#2b2d35')
 
         file_selector.pack(side=LEFT, padx=(2, 5))
         options_pane.pack(side=RIGHT, fill=Y, pady=10)
 
         options_frame.pack()
 
-        worker = Worker(file_selector, options_pane)
+        worker = Worker(file_selector, options_pane, bg='#2b2d35')
         worker.pack()

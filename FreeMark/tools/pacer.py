@@ -32,7 +32,7 @@ class Pacer:
         Set the amount of steps in the process to be timed
         :param _max: int amount of steps.
         """
-        assert _max > 1, "Max is less than zero (you cannot expect < 1 step)"
+        assert _max >= 1, "Max must be at least 1 (you cannot expect < 1 step)"
         self.max = _max
 
     def reset(self):
