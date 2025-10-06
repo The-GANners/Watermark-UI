@@ -19,7 +19,8 @@ class Pacer:
                       used for a continued process
                       (WARNING! Not yet implemented!)
         """
-        assert self.max > 1, "Max is less than zero (you cannot expect < 1 step)"
+        # FIX: allow single-step processes
+        assert self.max >= 1, "Max must be at least 1 step"
 
         # If it's a resumed process you might want to start somewhere not at 0
         if start:

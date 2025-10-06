@@ -39,6 +39,14 @@ class WatermarkOptions(Frame):
 
         self.opacity = IntVar()
         self.opacity.set(100)
+        # NEW: text style
+        self.text_size = IntVar()
+        self.text_size.set(32)
+        self.text_color = StringVar()
+        self.text_color.set("#FFFFFF")
+
+        # NEW: hold reference for toggling
+        self.text_style_frame = None
 
         self.create_widgets()
 
@@ -118,6 +126,30 @@ class WatermarkOptions(Frame):
             variable=self.scale_watermark,
             onvalue=True, offvalue=False, bg='#2b2d35', fg='white', selectcolor='#44475a', 
             activebackground='#2b2d35', activeforeground='white').pack(anchor=W, pady=(5, 0))
+
+      # ----------- Text style (for Text mode) -----------
+      self.text_style_frame = Frame(self, bg='#2b2d35')
+      Label(self.text_style_frame, text="Text size", bg='#2b2d35', fg='white').pack(side=LEFT)
+      validate = (self.register(self.validate_int), '%P')
+      Entry(self.text_style_frame, textvariable=self.text_size, width=5,
+            validate="key", validatecommand=validate, bg='#23242a', fg='white',
+            insertbackground='white', highlightbackground='#2b2d35',
+            highlightcolor='#6272a4', highlightthickness=1).pack(side=LEFT, padx=8)
+      # CHANGED: label to indicate color names or hex
+      Label(self.text_style_frame, text="Color (name or hex)", bg='#2b2d35', fg='white').pack(side=LEFT, padx=(12, 4))
+      Entry(self.text_style_frame, textvariable=self.text_color, width=14,
+            bg='#23242a', fg='white', insertbackground='white',
+            highlightbackground='#2b2d35', highlightcolor='#6272a4', highlightthickness=1).pack(side=LEFT)
+      self.text_style_frame.pack(anchor=W, pady=(8, 0))
+
+    # NEW: helpers to toggle text style visibility
+    def hide_text_style(self):
+        if self.text_style_frame:
+            self.text_style_frame.pack_forget()
+
+    def show_text_style(self):
+        if self.text_style_frame:
+            self.text_style_frame.pack(anchor=W, pady=(8, 0))
 
     @staticmethod
     def validate_int(number):

@@ -18,6 +18,20 @@ class OptionsPane(Frame):
         self.watermark_selector = WatermarkSelector(self)
         self.watermark_options = WatermarkOptions(self)
         self.create_widgets()
+        # NEW: react to mode change to toggle text style options
+        try:
+            self.watermark_selector.mode.trace('w', self._on_mode_change)
+        except Exception:
+            pass
+        # Initialize visibility per current mode
+        self._on_mode_change()
+
+    def _on_mode_change(self, *args):
+        mode = self.get_watermark_mode()
+        if mode == "image":
+            self.watermark_options.hide_text_style()
+        else:
+            self.watermark_options.show_text_style()
 
     def create_widgets(self):
         """Create the graphical element"""
@@ -33,6 +47,19 @@ class OptionsPane(Frame):
         :return: path to free_mark as string
         """
         return self.watermark_selector.get_path()
+
+    # NEW: expose mode and text config
+    def get_watermark_mode(self):
+        return self.watermark_selector.get_mode()
+
+    def get_text_value(self):
+        return self.watermark_selector.get_text()
+
+    def get_text_size(self):
+        return int(self.watermark_options.text_size.get())
+
+    def get_text_color(self):
+        return self.watermark_options.text_color.get()
 
     def get_output_path(self):
         return self.output_selector.get_dir()

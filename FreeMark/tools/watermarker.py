@@ -1,4 +1,6 @@
 from PIL import Image
+from PIL import ImageDraw, ImageFont  # NEW
+from PIL import ImageColor  # NEW
 import os
 from FreeMark.tools.help import clamp
 
@@ -22,13 +24,18 @@ class WaterMarker:
 
         # Prepare the watermarker
         try:
-            self.watermark = Image.open(watermark_path)
+            if watermark_path:
+                self.watermark = Image.open(watermark_path)
+                self.watermark_ratio = self.watermark.size[0] / self.watermark.size[1]
+            else:
+                # Text mode: defer creation until apply_watermark
+                self.watermark = None
+                self.watermark_ratio = None
         except FileNotFoundError:
             raise FileNotFoundError("Watermark not found, please click the "
                                     "\"Choose watermark\" button")
         except OSError:
             raise OSError("Watermark image is of incompatible type.")
-        self.watermark_ratio = self.watermark.size[0] / self.watermark.size[1]
 
     def clean(self):
         """
@@ -39,7 +46,7 @@ class WaterMarker:
 
     def apply_watermark(self, input_path, output_path, scale=True,
                         pos="SE", padding=((20, "px"), (5, "px")),
-                        opacity=0.5):
+                        opacity=0.5, mode="image", text=None, text_size=32, text_color="#FFFFFF"):
         """
         Apply a free_mark to an image
         :param input_path: path to image on disk as a string
@@ -55,26 +62,32 @@ class WaterMarker:
 
         image = Image.open(input_path)
 
-        if scale and \
-                (not self.previous_size or self.previous_size != image.size):
-            self.watermark_copy = self.scale_watermark(image)
-            if opacity < 1:
-                self.needs_opacity = True
-            else:
-                self.needs_opacity = False
-        elif not self.watermark_copy:
-            self.watermark_copy = self.watermark.copy()
-            if opacity < 1:
-                self.needs_opacity = True
-            else:
-                self.needs_opacity = False
+        # NEW: Determine watermark source (image or text)
+        if mode == "text" and text:
+            # Create a fresh RGBA text watermark
+            self.watermark_copy = self.create_text_watermark(text, text_size, text_color, opacity)
+            self.needs_opacity = False  # already baked into alpha
+        else:
+            # Image watermark path flow (existing)
+            if scale and \
+                    (not self.previous_size or self.previous_size != image.size):
+                self.watermark_copy = self.scale_watermark(image)
+                if opacity < 1:
+                    self.needs_opacity = True
+                else:
+                    self.needs_opacity = False
+            elif not self.watermark_copy:
+                self.watermark_copy = self.watermark.copy()
+                if opacity < 1:
+                    self.needs_opacity = True
+                else:
+                    self.needs_opacity = False
 
         self.previous_size = image.size
 
-        # Change free_mark opacity
+        # Change free_mark opacity (only for image watermark)
         if self.needs_opacity:
-            self.watermark_copy = self.change_opacity(self.watermark_copy,
-                                                      opacity)
+            self.watermark_copy = self.change_opacity(self.watermark_copy, opacity)
             self.needs_opacity = False
 
         position = self.get_watermark_position(image, self.watermark_copy,
@@ -184,3 +197,73 @@ class WaterMarker:
         else:
             x = pady
         return x, y
+
+    # NEW: Render text watermark image
+    # NEW: Parse color from hex or common color names (with a few aliases)
+    @staticmethod
+    def _parse_color(color_str, default=(255, 255, 255)):
+        if not color_str or not isinstance(color_str, str):
+            return default
+        s = color_str.strip()
+        # Try Pillow's color parser first (supports many English color names and hex)
+        try:
+            rgb = ImageColor.getrgb(s)
+            return rgb if isinstance(rgb, tuple) else default
+        except Exception:
+            pass
+        # Minimal multilingual aliases
+        aliases = {
+            # English
+            'red': '#ff0000', 'green': '#008000', 'blue': '#0000ff', 'yellow': '#ffff00',
+            'black': '#000000', 'white': '#ffffff', 'gray': '#808080', 'grey': '#808080',
+            # Spanish
+            'rojo': '#ff0000', 'verde': '#008000', 'azul': '#0000ff', 'amarillo': '#ffff00',
+            'negro': '#000000', 'blanco': '#ffffff', 'gris': '#808080',
+            # French
+            'rouge': '#ff0000', 'vert': '#008000', 'bleu': '#0000ff', 'jaune': '#ffff00',
+            'noir': '#000000', 'blanc': '#ffffff', 'gris': '#808080',
+            # German
+            'rot': '#ff0000', 'grün': '#008000', 'blau': '#0000ff', 'gelb': '#ffff00',
+            'schwarz': '#000000', 'weiß': '#ffffff', 'weiss': '#ffffff', 'grau': '#808080',
+        }
+        key = s.strip().lower()
+        if key in aliases:
+            try:
+                return ImageColor.getrgb(aliases[key])
+            except Exception:
+                return default
+        # Fallback: parse hex manually (#RRGGBB)
+        try:
+            h = s.lstrip('#')
+            if len(h) == 6:
+                r = int(h[0:2], 16)
+                g = int(h[2:4], 16)
+                b = int(h[4:6], 16)
+                return (r, g, b)
+        except Exception:
+            pass
+        return default
+
+    def create_text_watermark(self, text, font_size, color_hex, opacity):
+        # Choose font
+        try:
+            font = ImageFont.truetype("arial.ttf", font_size)
+        except Exception:
+            font = ImageFont.load_default()
+        # Measure text
+        dummy = Image.new("RGBA", (1, 1), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(dummy)
+        try:
+            bbox = draw.textbbox((0, 0), text, font=font)
+            text_w = bbox[2] - bbox[0]
+            text_h = bbox[3] - bbox[1]
+        except Exception:
+            text_w, text_h = draw.textsize(text, font=font)
+        # Create image
+        pad = 4
+        wm_img = Image.new("RGBA", (text_w + 2 * pad, text_h + 2 * pad), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(wm_img)
+        base_rgb = self._parse_color(color_hex)  # CHANGED: accept name or hex
+        alpha = max(0, min(255, int(255 * opacity)))
+        draw.text((pad, pad), text, font=font, fill=(base_rgb[0], base_rgb[1], base_rgb[2], alpha))
+        return wm_img

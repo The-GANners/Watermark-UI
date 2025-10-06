@@ -108,8 +108,14 @@ class Worker(Frame):
             overwrite = False
 
         try:
-            self.watermarker = WaterMarker(self.option_pane.get_watermark_path(),
-                                           overwrite=overwrite)
+            # NEW: instantiate WaterMarker based on mode
+            mode = self.option_pane.get_watermark_mode()
+            if mode == "image":
+                self.watermarker = WaterMarker(self.option_pane.get_watermark_path(),
+                                               overwrite=overwrite)
+            else:
+                # Text mode: no path needed
+                self.watermarker = WaterMarker(None, overwrite=overwrite)
         except Exception as e:
             self.handle_error(e)
             return
@@ -131,6 +137,11 @@ class Worker(Frame):
                       "scale": self.option_pane.should_scale(),
                       "opacity": self.option_pane.get_opacity()}
             output = self.option_pane.get_output_path()
+            # NEW: add mode/text params
+            kwargs["mode"] = self.option_pane.get_watermark_mode()
+            kwargs["text"] = self.option_pane.get_text_value() if kwargs["mode"] == "text" else None
+            kwargs["text_size"] = self.option_pane.get_text_size()
+            kwargs["text_color"] = self.option_pane.get_text_color()
             print(output)
         except BadOptionError as e:
             self.handle_error(e)
