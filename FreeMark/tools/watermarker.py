@@ -195,7 +195,8 @@ class WaterMarker:
         if pos[1] == "E":
             x = image.size[0] - watermark.size[0] - padx
         else:
-            x = pady
+            # FIX: use horizontal padding for X, not pady
+            x = padx
         return x, y
 
     # NEW: Render text watermark image
@@ -267,3 +268,42 @@ class WaterMarker:
         alpha = max(0, min(255, int(255 * opacity)))
         draw.text((pad, pad), text, font=font, fill=(base_rgb[0], base_rgb[1], base_rgb[2], alpha))
         return wm_img
+
+    # NEW: In-memory apply (PIL in, PIL out)
+    def apply_watermark_pil(self, pil_image, scale=True,
+                            pos="SE", padding=((20, "px"), (5, "px")),
+                            opacity=0.5, mode="image", text=None, text_size=32, text_color="#FFFFFF"):
+        """
+        Apply watermark to a PIL image and return a new PIL image (no file I/O).
+        Parameters mirror apply_watermark.
+        """
+        image = pil_image.convert("RGBA")
+
+        # Build watermark copy (image or text)
+        if mode == "text" and text:
+            wm = self.create_text_watermark(text, text_size, text_color, opacity)
+            needs_opacity = False
+        else:
+            # Image watermark (follow existing logic)
+            if scale and (not self.previous_size or self.previous_size != image.size):
+                wm = self.scale_watermark(image)
+                needs_opacity = opacity < 1
+            else:
+                wm = (self.watermark or Image.new("RGBA", (1, 1), (0, 0, 0, 0))).copy()
+                needs_opacity = opacity < 1
+
+        self.previous_size = image.size
+
+        if needs_opacity and wm.mode != "RGBA":
+            wm = wm.convert("RGBA")
+        if needs_opacity:
+            wm = self.change_opacity(wm, opacity)
+
+        x, y = self.get_watermark_position(image, wm, pos=pos, padding=padding)
+
+        out = image.copy()
+        try:
+            out.paste(wm, box=(x, y), mask=wm)
+        except ValueError:
+            out.paste(wm, box=(x, y))
+        return out.convert("RGBA")
