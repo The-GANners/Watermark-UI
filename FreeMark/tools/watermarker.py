@@ -171,9 +171,17 @@ class WaterMarker:
         :param padding: padding in format ((x_pad, unit), (y_pad, unit))
         :return: (x, y) coordinates to place the upper left coordinates
         """
-        # Change pos and make sure the right values were provided
+        # Normalize and validate
         assert padding[0][1] and padding[1][1] in ["px", "%"], "unit must be px or %"
-        pos = pos.upper().strip()
+        pos = (pos or "SE").upper().strip()
+
+        # Center placement (ignores padding for simplicity)
+        if pos in ("C", "CENTER"):
+            x = (image.size[0] - watermark.size[0]) // 2
+            y = (image.size[1] - watermark.size[1]) // 2
+            return x, y
+
+        # Cardinal placement with padding
         assert pos[0] in ['N', 'S'], "first char of pos must be N or S"
         assert pos[1] in ['E', 'W'], "second char of pos must be E or W"
 

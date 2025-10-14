@@ -61,12 +61,13 @@ class WatermarkOptions(Frame):
       Label(pos_options, text="Position", bg='#2b2d35', fg='white').pack(anchor=W)
 
       # -- Padding --
-      validate = (self.register(self.validate_int), '%P')
+      # Dedicated validator for padding range: [-30, 50]
+      validate_pad = (self.register(self.validate_int_range), '%P', '-30', '50')
       padding_frame = Frame(pos_options, bg='#2b2d35')
       # Horizontal padding
       Label(padding_frame, text="Pad x", bg='#2b2d35', fg='white').grid(column=0, row=0)
       Entry(padding_frame, textvariable=self.padx, validate="key", width=5,
-          validatecommand=validate, bg='#23242a', fg='white', insertbackground='white',
+          validatecommand=validate_pad, bg='#23242a', fg='white', insertbackground='white',
           highlightbackground='#2b2d35', highlightcolor='#6272a4', highlightthickness=1).grid(column=1, row=0, padx=padx)
       OptionMenu(padding_frame, self.unit_x,
              *self.unit_options).grid(column=3, row=0)
@@ -74,7 +75,7 @@ class WatermarkOptions(Frame):
       # Vertical padding
       Label(padding_frame, text="Pad y", bg='#2b2d35', fg='white').grid(column=0, row=1)
       Entry(padding_frame, textvariable=self.pady, validate="key", width=5,
-          validatecommand=validate, bg='#23242a', fg='white', insertbackground='white',
+          validatecommand=validate_pad, bg='#23242a', fg='white', insertbackground='white',
           highlightbackground='#2b2d35', highlightcolor='#6272a4', highlightthickness=1).grid(column=1, row=1,
                                padx=padx, pady=pady)
       OptionMenu(padding_frame, self.unit_y,
@@ -100,6 +101,11 @@ class WatermarkOptions(Frame):
       Radiobutton(pos_frame, text="Bottom right", variable=self.position,
               value="SE", bg='#2b2d35', fg='white', selectcolor='#44475a', activebackground='#2b2d35', activeforeground='white').grid(column=1, row=1,
                          padx=radio_pad, pady=radio_pad)
+      # NEW: Center position
+      Radiobutton(pos_frame, text="Center", variable=self.position,
+              value="C", bg='#2b2d35', fg='white', selectcolor='#44475a',
+              activebackground='#2b2d35', activeforeground='white').grid(column=0, row=2, columnspan=2, sticky=W,
+                         padx=radio_pad, pady=radio_pad)
       pos_frame.pack(side=LEFT, padx=30)
 
       pos_options.pack(anchor=W)
@@ -113,8 +119,10 @@ class WatermarkOptions(Frame):
           variable=self.opacity, bg='#2b2d35', fg='white', troughcolor='#23242a', 
           activebackground='#6272a4', highlightbackground='#2b2d35').pack(side=LEFT, anchor=N, padx=5)
 
+      # Keep generic int validation for opacity
+      validate_int = (self.register(self.validate_int), '%P')
       Entry(opacity_frame, textvariable=self.opacity, width=4,
-          validate="key", validatecommand=validate, bg='#23242a', fg='white', insertbackground='white',
+          validate="key", validatecommand=validate_int, bg='#23242a', fg='white', insertbackground='white',
           highlightbackground='#2b2d35', highlightcolor='#6272a4', highlightthickness=1).pack(side=LEFT,
                              anchor=S, pady=3)
 
@@ -130,9 +138,9 @@ class WatermarkOptions(Frame):
       # ----------- Text style (for Text mode) -----------
       self.text_style_frame = Frame(self, bg='#2b2d35')
       Label(self.text_style_frame, text="Text size", bg='#2b2d35', fg='white').pack(side=LEFT)
-      validate = (self.register(self.validate_int), '%P')
+      validate_text = (self.register(self.validate_int), '%P')
       Entry(self.text_style_frame, textvariable=self.text_size, width=5,
-            validate="key", validatecommand=validate, bg='#23242a', fg='white',
+            validate="key", validatecommand=validate_text, bg='#23242a', fg='white',
             insertbackground='white', highlightbackground='#2b2d35',
             highlightcolor='#6272a4', highlightthickness=1).pack(side=LEFT, padx=8)
       # CHANGED: label to indicate color names or hex
@@ -150,6 +158,16 @@ class WatermarkOptions(Frame):
     def show_text_style(self):
         if self.text_style_frame:
             self.text_style_frame.pack(anchor=W, pady=(8, 0))
+
+    # NEW: padding validator with range [-30, 50]
+    def validate_int_range(self, number, min_s, max_s):
+        try:
+            if len(number.strip()) == 0:
+                return True
+            val = int(number)
+            return int(min_s) <= val <= int(max_s)
+        except ValueError:
+            return False
 
     @staticmethod
     def validate_int(number):
