@@ -16,10 +16,10 @@ from typing import Optional, Tuple  # Python 3.9 compatible
 WATERMARKED_IMAGE = r'd:\WatermarkGAN\WatermarkDCT_DWT\result\watermarked.png'  # Image to verify (raw string)
 ORIGINAL_WATERMARK = None  # Optional path to original watermark image
 TEXT_ORIGINAL = "Nandan Upadhyaya"  # Optional text watermark to verify
-WATERMARK_SIZE = 11  # MUST match test.py's capacity-matched size (11 for redundancy=8)
+WATERMARK_SIZE = 6  # DEFAULT: Auto-inferred (6×6 for 256×256 with R=6)
 MODEL = 'haar'
 LEVEL = 1
-REDUNDANCY = 8  # MUST match test.py
+REDUNDANCY = 6  # REVERTED: Match watermarkdwt.py optimal config
 DETECTION_THRESHOLD = 0.85  # INCREASED: Much stricter threshold for watermark presence
 # NEW: Blind detection thresholds
 MER_POS = (5, 5)  # position used by embedder in each 8x8 block
@@ -88,11 +88,23 @@ def _create_text_watermark(text, size, font_size=None):
     FIXED: Render centered text, then BINARIZE to {-1,+1} like test.py's _prepare_capacity_and_wm
     """
     if font_size is None:
-        font_size = max(12, size // 6)
+        # FIXED: Match watermarkdwt.py exactly
+        font_size = max(16, size // 6)
+        
     img = Image.new('L', (size, size), color=0)
     draw = ImageDraw.Draw(img)
     try:
-        font = ImageFont.truetype("arial.ttf", font_size)
+        # IMPROVED: Same font paths as watermarkdwt.py
+        font_paths = ["arial.ttf", "C:\\Windows\\Fonts\\arial.ttf", "Arial.ttf"]
+        font = None
+        for fp in font_paths:
+            try:
+                font = ImageFont.truetype(fp, font_size)
+                break
+            except:
+                continue
+        if font is None:
+            raise Exception("No TrueType font found")
     except Exception:
         font = ImageFont.load_default()
     try:
@@ -104,9 +116,9 @@ def _create_text_watermark(text, size, font_size=None):
     y = (size - th) // 2
     draw.text((x, y), text, fill=255, font=font)
     
-    # FIXED: Binarize to {-1,+1} using median threshold (matching test.py)
+    # FIXED: Use fixed threshold for consistency
     wm_arr = np.array(img, dtype=np.float64)
-    thr = float(np.median(wm_arr))
+    thr = 127.5  # Fixed threshold matching watermarkdwt.py
     bits01 = (wm_arr >= thr).astype(np.uint8)
     ref_map = (bits01 * 2 - 1).astype(np.float64)  # {-1, +1}
     return ref_map
