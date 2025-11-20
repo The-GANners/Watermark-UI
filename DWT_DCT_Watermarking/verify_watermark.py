@@ -19,13 +19,13 @@ TEXT_ORIGINAL = "Nandan Upadhyaya"  # Optional text watermark to verify
 WATERMARK_SIZE = 6  # DEFAULT: Auto-inferred (6×6 for 256×256 with R=6)
 MODEL = 'haar'
 LEVEL = 1
-REDUNDANCY = 6  # REVERTED: Match watermarkdwt.py optimal config
-DETECTION_THRESHOLD = 0.85  # INCREASED: Much stricter threshold for watermark presence
+REDUNDANCY = 3  # FIXED: Match invisible_watermark.py backend default
+DETECTION_THRESHOLD = 0.90  # INCREASED: Stricter threshold to reduce false positives
 # NEW: Blind detection thresholds
 MER_POS = (5, 5)  # position used by embedder in each 8x8 block
 MER_COMP_POS = [(3, 4), (4, 3), (4, 4), (5, 3), (3, 5)]  # nearby mid-band coeffs
-MER_MIN_RATIO = 1.10  # mean(|c55|) must be 10% higher than neighbors on average
-MER_Z_MIN = 1.75      # z-score threshold for significance
+MER_MIN_RATIO = 1.15  # INCREASED: Stricter for FP mitigation
+MER_Z_MIN = 2.0      # INCREASED: Stricter z-score threshold for significance
 
 
 def apply_dct(image_array):
@@ -143,17 +143,38 @@ def extract_watermark_from_image(image_path, wm_size=None):
 def measure_ncc(original_wm, recovered_wm):
     """
     FIXED: Use test.py's robust NCC on {-1,+1} maps.
+    NEW: Add variance check to detect uniform/saturated patterns (FP mitigation)
     """
     a = np.sign(np.asarray(original_wm, dtype=np.float64).flatten())
     b = np.sign(np.asarray(recovered_wm, dtype=np.float64).flatten())
     # Ensure {-1,+1}
     a[a == 0] = 1.0
     b[b == 0] = 1.0
+    
+    # NEW: Check for uniform patterns (all same value = likely false positive)
+    if np.std(b) < 0.1:  # recovered watermark is nearly uniform
+        print("  ⚠️  WARNING: Recovered watermark is uniform (likely false positive)")
+        return -1.0  # Force rejection
+    
     # Correlation-like score in [-1, 1]
     return float(np.mean(a * b))
 
+# NEW: Spatial pattern distance metric for small watermarks
+def measure_spatial_distance(original_wm, recovered_wm):
+    """
+    Compute Hamming distance between binary patterns (lower = better match).
+    Returns normalized distance in [0, 1] where 0 = perfect match, 1 = opposite.
+    """
+    a = np.sign(np.asarray(original_wm, dtype=np.float64).flatten())
+    b = np.sign(np.asarray(recovered_wm, dtype=np.float64).flatten())
+    a[a == 0] = 1.0
+    b[b == 0] = 1.0
+    # Hamming distance (count of mismatches)
+    mismatches = np.sum(a != b)
+    total = len(a)
+    return float(mismatches) / total
 
-# NEW: Blind MER detector
+
 def _compute_mer_scores(dct_ll):
     """
     Compute mid-band energy ratio (MER) and z-score across 8x8 blocks in DWT-LL.
@@ -215,7 +236,7 @@ def verify_watermark(watermarked_image_path, original_watermark_path=None,
     print(f"\n📄 Verifying Image: {watermarked_image_path}")
 
     verdicts = []
-    details = {"ncc": None, "ncc_threshold": ncc_threshold, "blind_mer_ratio": None, "blind_mer_z": None, "wm_size": None}
+    details = {"ncc": None, "ncc_threshold": ncc_threshold, "blind_mer_ratio": None, "blind_mer_z": None, "wm_size": None, "hamming_distance": None}
 
     # If we have a reference (image path or text), do NCC-based decision
     if (original_watermark_path and os.path.exists(original_watermark_path)) or (original_text and len(str(original_text).strip()) > 0):
@@ -224,57 +245,77 @@ def verify_watermark(watermarked_image_path, original_watermark_path=None,
             details["wm_size"] = inferred_size
             print("✓ Watermark extraction successful")
             print(f"  Recovered watermark shape: {recovered_wm.shape}")
-            # Save recovered for inspection
-            os.makedirs('./result', exist_ok=True)
-            # FIXED: Recovered is {-1,+1}, convert to [0,255] for visualization
-            recovered_normalized = ((recovered_wm + 1.0) * 0.5 * 255.0).astype(np.uint8)
-            Image.fromarray(recovered_normalized).save('./result/recovered_watermark.jpg')
-
-            # Build reference watermark (image path or rendered text)
-            if original_watermark_path and os.path.exists(original_watermark_path):
-                orig_img = Image.open(original_watermark_path).convert('L')
-                orig_img = orig_img.resize((inferred_size, inferred_size), Image.Resampling.LANCZOS)
-                # FIXED: Binarize image watermark to {-1,+1}
-                orig_arr_gray = np.array(orig_img, dtype=np.float64)
-                thr = float(np.median(orig_arr_gray))
-                bits01 = (orig_arr_gray >= thr).astype(np.uint8)
-                orig_array = (bits01 * 2 - 1).astype(np.float64)
-                print(f"✓ Using original watermark image as reference")
+            
+            # NEW: Check for uniform/saturated pattern (FP mitigation)
+            recovered_std = float(np.std(recovered_wm))
+            print(f"  Recovered watermark variance: {recovered_std:.4f}")
+            
+            if recovered_std < 0.1:
+                print("  ⚠️  WARNING: Recovered watermark is uniform (all same value)")
+                print("  ❌ LIKELY FALSE POSITIVE - No actual watermark detected")
+                verdicts.append(False)
+                details["ncc"] = -1.0
             else:
-                # Already returns {-1,+1}
-                orig_array = _create_text_watermark(str(original_text).strip(), inferred_size)
-                print(f"✓ Using rendered text as reference: \"{str(original_text).strip()}\"")
+                # Save recovered for inspection
+                os.makedirs('./result', exist_ok=True)
+                # FIXED: Recovered is {-1,+1}, convert to [0,255] for visualization
+                recovered_normalized = ((recovered_wm + 1.0) * 0.5 * 255.0).astype(np.uint8)
+                Image.fromarray(recovered_normalized).save('./result/recovered_watermark.jpg')
 
-            # FIXED: Use the robust measure_ncc matching test.py
-            ncc_score = measure_ncc(orig_array, recovered_wm)
-            details["ncc"] = float(ncc_score)
-            print(f"→ NCC with original: {ncc_score:.4f} (threshold {ncc_threshold:.2f})")
-            
-            # FIXED: More accurate interpretation with confidence gaps
-            confidence_gap = ncc_score - ncc_threshold
-            
-            if ncc_score >= 0.95:
-                print("  ✅ PERFECT MATCH - Watermark is definitively present")
-            elif ncc_score >= ncc_threshold:
-                if confidence_gap >= 0.1:
-                    print("  ✅ STRONG MATCH - Watermark is clearly present")
+                # Build reference watermark (image path or rendered text)
+                if original_watermark_path and os.path.exists(original_watermark_path):
+                    orig_img = Image.open(original_watermark_path).convert('L')
+                    orig_img = orig_img.resize((inferred_size, inferred_size), Image.Resampling.LANCZOS)
+                    # FIXED: Binarize image watermark to {-1,+1}
+                    orig_arr_gray = np.array(orig_img, dtype=np.float64)
+                    thr = float(np.median(orig_arr_gray))
+                    bits01 = (orig_arr_gray >= thr).astype(np.uint8)
+                    orig_array = (bits01 * 2 - 1).astype(np.float64)
+                    print(f"✓ Using original watermark image as reference")
                 else:
-                    print(f"  ✅ THRESHOLD MATCH - Watermark detected (confidence gap: +{confidence_gap:.3f})")
-            elif ncc_score >= ncc_threshold - 0.05:  # Close to threshold
-                print(f"  ⚠️  BORDERLINE - Just below threshold (gap: {confidence_gap:.3f})")
-            elif ncc_score >= 0.5:
-                print(f"  ❌ WEAK CORRELATION - Likely no watermark (gap: {confidence_gap:.3f})")
-            else:
-                print(f"  ❌ NO CORRELATION - No watermark detected (gap: {confidence_gap:.3f})")
-            
-            verdicts.append(ncc_score >= ncc_threshold)
+                    # Already returns {-1,+1}
+                    orig_array = _create_text_watermark(str(original_text).strip(), inferred_size)
+                    print(f"✓ Using rendered text as reference: \"{str(original_text).strip()}\"")
 
-            # Save comparison image
-            # FIXED: orig_array is {-1,+1}, convert to [0,255]
-            orig_norm = ((orig_array + 1.0) * 0.5 * 255.0).astype(np.uint8)
-            comparison = np.hstack([orig_norm, recovered_normalized])
-            Image.fromarray(comparison).save('./result/watermark_verification.jpg')
-            print("✓ Saved: ./result/watermark_verification.jpg")
+                # FIXED: Use the robust measure_ncc matching test.py
+                ncc_score = measure_ncc(orig_array, recovered_wm)
+                details["ncc"] = float(ncc_score)
+                
+                # NEW: Add Hamming distance for spatial pattern verification (especially for small sizes)
+                hamming_dist = measure_spatial_distance(orig_array, recovered_wm)
+                details["hamming_distance"] = float(hamming_dist)
+                
+                print(f"→ NCC with original: {ncc_score:.4f} (threshold {ncc_threshold:.2f})")
+                print(f"→ Hamming distance: {hamming_dist:.4f} (0=perfect, 1=opposite)")
+                
+                # NEW: For small watermarks (≤10×10), use STRICTER criteria
+                if inferred_size <= 10:
+                    print("  ℹ️  Small watermark detected - applying stricter verification")
+                    # Require BOTH high NCC AND low Hamming distance
+                    strict_ncc_pass = ncc_score >= 0.92  # Higher than normal threshold
+                    strict_hamming_pass = hamming_dist <= 0.15  # Max 15% bit errors
+                    
+                    if strict_ncc_pass and strict_hamming_pass:
+                        print(f"  ✅ STRICT MATCH - Both NCC ({ncc_score:.4f}) and Hamming ({hamming_dist:.4f}) pass")
+                        verdicts.append(True)
+                    else:
+                        if not strict_ncc_pass:
+                            print(f"  ❌ NCC too low for small watermark ({ncc_score:.4f} < 0.92)")
+                        if not strict_hamming_pass:
+                            print(f"  ❌ Hamming distance too high ({hamming_dist:.4f} > 0.15)")
+                        print("  ⚠️  REJECTED - Small watermark requires stricter criteria")
+                        verdicts.append(False)
+                else:
+                    # Normal-sized watermark: use standard NCC threshold
+                    # ...existing code for confidence_gap interpretation...
+                    verdicts.append(ncc_score >= ncc_threshold)
+
+                # Save comparison image
+                # FIXED: orig_array is {-1,+1}, convert to [0,255]
+                orig_norm = ((orig_array + 1.0) * 0.5 * 255.0).astype(np.uint8)
+                comparison = np.hstack([orig_norm, recovered_normalized])
+                Image.fromarray(comparison).save('./result/watermark_verification.jpg')
+                print("✓ Saved: ./result/watermark_verification.jpg")
 
         except Exception as e:
             print(f"❌ ERROR during reference-based verification: {e}")
