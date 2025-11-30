@@ -13,8 +13,9 @@
 
 ## 📖 Overview
 
-**Watermark-UI** is a powerful, user-friendly desktop application for batch watermarking images with both **visible** and **invisible** (DWT-DCT) watermarks.  
-It supports image and text watermarks, robust invisible watermarking, real-time previews, and batch processing—all in a simple GUI.
+**Watermark-UI** is a powerful, user-friendly desktop application for batch watermarking images with  **visible** watermarks.  
+It supports image and text watermarks, real-time previews, and batch processing—all in a simple GUI. <br>
+**DWT-DCT based Invisible watermarking** is implemented by the file named **watermarkdwt.py** and its verification and extraction is provided by **verify_watermark.py** file. It also supports both image and text watermarks.
 
 ---
 
@@ -64,7 +65,8 @@ It supports image and text watermarks, robust invisible watermarking, real-time 
 
 - **Description:**  
   Embeds a binary watermark (text or image) into the host image using a combination of **Discrete Wavelet Transform (DWT)** and **Discrete Cosine Transform (DCT)**.
-- **Implementation:**  
+- **Implementation:**
+  - The DWT-DCT invisible watermarking module operates on YCbCr luminance with 1-level Haar DWT, 8×8 DCT blocks, pairwise margin embedding at positions (3,4) and (4,3).
   - Embedding and extraction are performed on the **Y channel** (luminance) in **YCbCr** color space.
   - Watermark is embedded in DCT coefficients of DWT-LL subbands, with adaptive margin and redundancy.
   - Supports watermark extraction (binary pattern) with verification functionality.
@@ -95,7 +97,7 @@ It supports image and text watermarks, robust invisible watermarking, real-time 
    pip install -r requirements.txt
    ```
 
-3. **Run the application**
+3. **Run the application (Visible Watermark)**
    ```bash
    python FreeMark.py
    ```
@@ -107,16 +109,23 @@ It supports image and text watermarks, robust invisible watermarking, real-time 
 You can also use the invisible watermarking functionality directly via command line scripts:
 
 ### **Embed Invisible Watermark**
+#### For Text Watermark:
 ```bash
 python watermarkdwt.py --input "input_image.png" --output "watermarked.png" --text "Your watermark text"
-# or for image watermark:
+```
+#### For Image Watermark:
+```bash
 python watermarkdwt.py --input "input_image.png" --output "watermarked.png" --watermark_image "wm.png"
 ```
 
 ### **Extract & Verify Invisible Watermark**
+#### For Text Watermark:
 ```bash
 python verify_watermark.py --input "watermarked.png" --text "Your watermark text"
-# or for image watermark:
+```
+
+#### For Image Watermark:
+```bash
 python verify_watermark.py --input "watermarked.png" --watermark_image "wm.png"
 ```
 
@@ -133,21 +142,6 @@ python verify_watermark.py --input "watermarked.png" --watermark_image "wm.png"
 | **Robustness Testing** | Simulate attacks and measure watermark survival  |
 | **Extraction & Verification** | Extract and verify invisible watermarks   |
 
----
-
-## 🖼️ Example Workflow
-
-1. **Select images** to watermark (single or batch).
-2. **Choose watermark type:** visible or invisible.
-3. **Configure watermark:**  
-   - For visible: set image/text, position, opacity, scale, rotation, padding.
-   - For invisible: set text/image watermark, adjust embedding strength.
-4. **Preview** the watermark on your images.
-5. **Apply watermark** to all selected images.
-6. **Download** all watermarked images in one click.
-7. **(Invisible only)**: Extract and verify watermark, view robustness metrics.
-
----
 
 ## 📄 License
 
